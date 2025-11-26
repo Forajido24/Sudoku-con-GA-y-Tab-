@@ -1,76 +1,108 @@
 import numpy as np
 import copy
+import tkinter as tk
 
-class SudokuModel:
-    def __init__(self, board):
-        """
-        board: matriz 9x9 con ceros en las celdas vacías.
-        """
-        self.board = np.array(board)
-        self.fixed_mask = (self.board != 0)  # True = celda fija
+class SudokuModelo:
+    def __init__(self, tablero):
+        self.tablero = np.array(tablero)
+        self.mascara_fijas = (self.tablero != 0)
+
+        # Compatibilidad con main.py
+        self.fixed_mask = self.mascara_fijas
+
 
     # ---------------------------------------------------
-    # 1. GENERAR INDIVIDUO INICIAL VÁLIDO (POR SUBCUADROS)
+    #  MÉTODOS NECESARIOS PARA EL GA
     # ---------------------------------------------------
-    def generate_individual(self):
-        """
-        Devuelve un Sudoku completo respetando:
-        - Celdas fijas
-        - Subcuadros 3x3 correctos (sin repeticiones)
-        Corrige solo subcuadros; filas/columnas se corrigen con GA.
-        """
-        individual = copy.deepcopy(self.board)
 
-        # Llenar cada subcuadro con números válidos
-        for br in range(0, 9, 3):
-            for bc in range(0, 9, 3):
-                self._fill_subgrid(individual, br, bc)
+    def obtener_tablero(self):
+        """Devuelve el tablero actual."""
+        return self.tablero
 
-        return individual
+    def obtener_copia(self):
+        """Devuelve una copia profunda del modelo."""
+        return SudokuModelo(copy.deepcopy(self.tablero))
 
-    # -------------------------------------------
-    # LLENAR UN SUBCUADRO 3×3 RESPETANDO FIJOS
-    # -------------------------------------------
-    def _fill_subgrid(self, board, start_row, start_col):
-        """
-        Llena un subcuadro 3x3 con números del 1 al 9
-        sin repetir, respetando las celdas fijas.
-        """
-        used = set()
-        empty_positions = []
+    # ---------------------------------------------------
+    #  GENERACIÓN DE INDIVIDUOS
+    # ---------------------------------------------------
 
-        # Revisar el subcuadro
-        for r in range(start_row, start_row + 3):
-            for c in range(start_col, start_col + 3):
-                if self.fixed_mask[r, c]:
-                    used.add(board[r, c])
+    def generar_individuo(self):
+        individuo = copy.deepcopy(self.tablero)
+
+        for fila_ini in range(0, 9, 3):
+            for col_ini in range(0, 9, 3):
+                self._llenar_subcuadro(individuo, fila_ini, col_ini)
+
+        return individuo
+
+    def _llenar_subcuadro(self, tablero, fila_ini, col_ini):
+        usados = set()
+        posiciones_vacias = []
+
+        for f in range(fila_ini, fila_ini + 3):
+            for c in range(col_ini, col_ini + 3):
+                if self.mascara_fijas[f, c]:
+                    usados.add(tablero[f, c])
                 else:
-                    empty_positions.append((r, c))
+                    posiciones_vacias.append((f, c))
 
-        # Números disponibles
-        available = list(set(range(1, 10)) - used)
-        np.random.shuffle(available)
+        disponibles = list(set(range(1, 10)) - usados)
+        np.random.shuffle(disponibles)
 
-        # Llenar las celdas vacías
-        for pos, value in zip(empty_positions, available):
-            r, c = pos
-            board[r, c] = value
+        for (f, c), valor in zip(posiciones_vacias, disponibles):
+            tablero[f, c] = valor
 
-    # -------------------------------------------------
-    # 2. UTILIDAD: IMPRIMIR EL TABLERO BONITO (OPCIONAL)
-    # -------------------------------------------------
-    def print_board(self, board):
-        print("\n-------------------------")
-        for i in range(9):
-            row = ""
-            for j in range(9):
-                num = board[i][j]
-                row += f" {num if num != 0 else '.'}"
-                if (j + 1) % 3 == 0 and j < 8:
-                    row += " |"
-            print(row)
-            if (i + 1) % 3 == 0 and i < 8:
-                print("-------------------------")
-        print("-------------------------")
+    # ---------------------------------------------------
+    #  INTERFAZ GRÁFICA
+    # ---------------------------------------------------
 
+    def mostrar_tablero_tk(self, tablero):
+        ventana = tk.Tk()
+        ventana.title("Sudoku")
+        ventana.configure(bg="#2b2b2b")
 
+        titulo = tk.Label(
+            ventana,
+            text="SUDOKU",
+            font=("Arial", 28, "bold"),
+            fg="white",
+            bg="#2b2b2b",
+            pady=10
+        )
+        titulo.grid(row=0, column=0, columnspan=9)
+
+        fuente = ("Arial", 16, "bold")
+
+        for fila in range(9):
+            ventana.grid_rowconfigure(fila + 1, weight=1)
+
+            for col in range(9):
+                ventana.grid_columnconfigure(col, weight=1)
+
+                valor = tablero[fila][col]
+
+                # alternar colores por subcuadro
+                if (fila // 3 + col // 3) % 2 == 0:
+                    color_fondo = "#ececec"
+                else:
+                    color_fondo = "#ffffff"
+
+                # celdas fijas en gris
+                if self.mascara_fijas[fila, col]:
+                    color_fondo = "#b8b8b8"
+
+                celda = tk.Label(
+                    ventana,
+                    text=str(valor),
+                    width=4,
+                    height=2,
+                    font=fuente,
+                    relief="solid",
+                    borderwidth=1,
+                    bg=color_fondo
+                )
+
+                celda.grid(row=fila + 1, column=col, sticky="nsew")
+
+        ventana.mainloop()
