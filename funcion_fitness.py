@@ -2,9 +2,8 @@ import numpy as np
 
 def contar_duplicados(arreglo):
     """
-    Cuenta cuántos elementos están repetidos en 'arreglo' (array 1D).
-    No cuenta ceros (celdas vacías).
-    Ejemplo: [1,2,2,3,3,3] -> devuelve 3 (1 duplicado para 2, 2 duplicados para 3)
+    *Cuenta cuantos elementos estan repetidos en el arreglo.
+    *No cuenta las celdas vacias.
     """
     valores, conteos = np.unique(arreglo, return_counts=True)
     duplicados = 0
@@ -17,24 +16,23 @@ def contar_duplicados(arreglo):
 
 def evaluar_fitness(tablero):
     """
-    Calcula errores (fitness) de un tablero 9x9:
-    - duplicados en filas
-    - duplicados en columnas
-    - duplicados en subcuadros 3x3
-    Fitness más bajo = mejor.
+    Calcula errores del tablero:
+    *duplicados en filas
+    *duplicados en columnas
+    *duplicados en subcuadros 3x3
     """
     tablero = np.array(tablero)
     errores = 0
 
-    # Filas
+    #Filas
     for fila in range(9):
         errores += contar_duplicados(tablero[fila, :])
 
-    # Columnas
+    #Columnas
     for col in range(9):
         errores += contar_duplicados(tablero[:, col])
 
-    # Subcuadros 3x3
+    #Subcuadros 3x3
     for i in range(0, 9, 3):
         for j in range(0, 9, 3):
             sub = tablero[i:i+3, j:j+3].flatten()

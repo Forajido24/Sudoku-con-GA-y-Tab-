@@ -3,34 +3,27 @@ from tkinter import messagebox
 from sudoku import SudokuModelo
 from algoritmo_GA import AlgoritmoGeneticoSudoku
 
-
-# ============================
-# FUNCIÓN PARA DIBUJAR SUDOKU
-# ============================
+#Funcion para dibujar el Sudoku
 def dibujar_tablero(canvas, modelo_sudoku):
-    canvas.delete("all")  # limpiar
-
+    canvas.delete("all")
     tablero = modelo_sudoku.tablero
-
-
     size = 40
     offset = 20
 
     for fila in range(9):
         for col in range(9):
-
             x1 = offset + col * size
             y1 = offset + fila * size
             x2 = x1 + size
             y2 = y1 + size
 
-            # Color alternado de subcuadros
+            #Color alternado de subcuadros
             if (fila // 3 + col // 3) % 2 == 0:
                 color = "#E6F7FF"
             else:
                 color = "#FFFFFF"
 
-            # Celdas fijas en gris
+            #Celdas fijas en gris
             if model.fixed_mask[fila, col]:
                 color = "#D3D3D3"
 
@@ -45,19 +38,15 @@ def dibujar_tablero(canvas, modelo_sudoku):
                     font=("Arial", 16, "bold")
                 )
 
-    # Líneas gruesas para 3x3
+    #Lineas para separar 3x3
     for i in range(10):
         width = 3 if i % 3 == 0 else 1
         canvas.create_line(offset, offset + i * size, offset + 9 * size, offset + i * size, width=width)
         canvas.create_line(offset + i * size, offset, offset + i * size, offset + 9 * size, width=width)
 
-
-# ============================
-# ACCIONES DE BOTONES
-# ============================
+#Ejecutar Algoritmo Genetico
 def ejecutar_GA():
     messagebox.showinfo("Ejecutando", "Ejecutando Algoritmo Genético...")
-
     ga = AlgoritmoGeneticoSudoku(model)
     solucion, historial = ga.ejecutar()
 
@@ -65,30 +54,17 @@ def ejecutar_GA():
         messagebox.showwarning("Sin solución", "No se encontró solución.")
         return
 
-    model.tablero = solucion   # ← AQUÍ EL CAMBIO CORRECTO
+    model.tablero = solucion
     dibujar_tablero(canvas, model)
     messagebox.showinfo("Listo", "¡El GA ha terminado y se actualizó el tablero!")
 
-
-def limpiar_tablero():
-    # OJO: sólo borro celdas NO FIJAS
-    for fila in range(9):
-        for col in range(9):
-            if not model.fixed_mask[fila, col]:
-                model.board[fila, col] = 0
-
-    dibujar_tablero(canvas, model)
-
-
+#Salir del sudoku
 def salir():
     ventana.destroy()
 
-
-# ============================
-#       INTERFAZ GRÁFICA
-# ============================
+#Interfaz principal
 ventana = tk.Tk()
-ventana.title("Sudoku con Algoritmo Genético")
+ventana.title("Sudoku")
 ventana.geometry("550x600")
 ventana.configure(bg="#1E1E1E")
 
@@ -103,10 +79,7 @@ tk.Label(
 canvas = tk.Canvas(ventana, width=420, height=420, bg="#1E1E1E", highlightthickness=0)
 canvas.pack()
 
-
-# ============================
-# CARGAR TABLERO BASE
-# ============================
+#Tablero inicial
 TABLERO_INICIAL = [
     [5, 3, 0, 0, 7, 0, 0, 0, 0],
     [6, 0, 0, 1, 9, 5, 0, 0, 0],
@@ -120,13 +93,9 @@ TABLERO_INICIAL = [
 ]
 
 model = SudokuModelo(TABLERO_INICIAL)
-
 dibujar_tablero(canvas, model)
 
-
-# ============================
-# BOTONES
-# ============================
+#Botones
 frame_botones = tk.Frame(ventana, bg="#1E1E1E")
 frame_botones.pack(pady=10)
 
@@ -135,6 +104,5 @@ tk.Button(frame_botones, text="Ejecutar GA", font=("Arial", 14),
 
 tk.Button(frame_botones, text="Salir", font=("Arial", 14),
           bg="#F44336", fg="white", command=salir).grid(row=0, column=2, padx=10)
-
 
 ventana.mainloop()
