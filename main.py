@@ -2,6 +2,7 @@ import tkinter as tk
 from tkinter import messagebox
 from sudoku import SudokuModelo
 from algoritmo_GA import AlgoritmoGeneticoSudoku
+from algoritmo_tabu import Tabu
 
 #Funcion para dibujar el Sudoku
 def dibujar_tablero(canvas, modelo_sudoku):
@@ -47,16 +48,37 @@ def dibujar_tablero(canvas, modelo_sudoku):
 #Ejecutar Algoritmo Genetico
 def ejecutar_GA():
     messagebox.showinfo("Ejecutando", "Ejecutando Algoritmo Genético...")
+
+    # 1. Ejecutar GA
     ga = AlgoritmoGeneticoSudoku(model)
     solucion, historial = ga.ejecutar()
 
     if solucion is None:
-        messagebox.showwarning("Sin solución", "No se encontró solución.")
+        messagebox.showwarning("Sin solución", "El GA no encontró nada útil.")
         return
 
+    # Actualizar tablero con la solución del GA
     model.tablero = solucion
     dibujar_tablero(canvas, model)
-    messagebox.showinfo("Listo", "¡El GA ha terminado y se actualizó el tablero!")
+
+    print("=== Ejecutando TABU ===")
+    messagebox.showinfo("Ejecutando", "Ejecutando Algoritmo Tabu...")
+    # 2. Ejecutar TABU sobre la solución del GA
+    tabu = Tabu(model)
+    mejor, fit = tabu.ejecutar()
+
+    # 3. Mostrar resultado final
+    model.tablero = mejor
+    dibujar_tablero(canvas, model)
+
+    if fit == 0:
+        messagebox.showinfo("Perfecto", "¡GA + Tabu resolvieron completamente el Sudoku!")
+    else:
+        messagebox.showinfo("Parcial", 
+            f"Mejoró el tablero. Fitness final: {fit}")
+
+    
+    
 
 #Salir del sudoku
 def salir():
@@ -99,7 +121,7 @@ dibujar_tablero(canvas, model)
 frame_botones = tk.Frame(ventana, bg="#1E1E1E")
 frame_botones.pack(pady=10)
 
-tk.Button(frame_botones, text="Ejecutar GA", font=("Arial", 14),
+tk.Button(frame_botones, text="Ejecutar Algoritmos", font=("Arial", 14),
           bg="#4CAF50", fg="white", command=ejecutar_GA).grid(row=0, column=0, padx=10)
 
 tk.Button(frame_botones, text="Salir", font=("Arial", 14),

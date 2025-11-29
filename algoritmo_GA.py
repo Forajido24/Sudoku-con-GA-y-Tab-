@@ -1,17 +1,17 @@
 import numpy as np
 import random
-from sudoku import SudokuModelo
 from funcion_fitness import evaluar_fitness
+from sudoku import SudokuModelo
+
 
 class AlgoritmoGeneticoSudoku:
 
-    #Inicializamos el algoritmo genético con parametros
-    def __init__(self, tablero_base, tam_poblacion=100, generaciones=200, tasa_mutacion=0.1, elitismo=True):
-        
+    def __init__(self, tablero_base, tam_poblacion=150, generaciones=200,
+                 tasa_mutacion=0.2, elitismo=True):
+
         if isinstance(tablero_base, SudokuModelo):
             self.modelo = tablero_base
         else:
-
             self.modelo = SudokuModelo(tablero_base)
 
         self.tam_poblacion = tam_poblacion
@@ -19,98 +19,109 @@ class AlgoritmoGeneticoSudoku:
         self.tasa_mutacion = tasa_mutacion
         self.elitismo = elitismo
 
-    #Generamos la poblacion inicial
+    # ---------------------------------------------------------
+    # Generar la POBLACIÓN INICIAL
+    # ---------------------------------------------------------
     def generar_poblacion(self):
-        poblacion = []
-        for _ in range(self.tam_poblacion):
-            individuo = self.modelo.generar_individuo()
-            poblacion.append(individuo)
-        return poblacion
+        return [self.modelo.generar_individuo() for _ in range(self.tam_poblacion)]
 
-    #Seleccion por torneo, escogemos el mejor entre k individuos
-    def seleccion_torneo(self, poblacion, k=3):
+    # ---------------------------------------------------------
+    # Selección por TORNEO
+    # ---------------------------------------------------------
+    def seleccion_torneo(self, poblacion, k=5):
         candidatos = random.sample(poblacion, k)
-        valores = [evaluar_fitness(ind) for ind in candidatos]
-        mejor_idx = int(np.argmin(valores))
-        return candidatos[mejor_idx]
-    
-    #Cruce entre dos padres para generar un hijo
+        fitness_vals = [evaluar_fitness(ind) for ind in candidatos]
+        return candidatos[int(np.argmin(fitness_vals))]
+
+    # ---------------------------------------------------------
+    # CRUCE por BLOQUES 3×3 (respeta celdas fijas)
+    # ---------------------------------------------------------
     def cruce(self, padre1, padre2):
-        hijo = np.copy(padre1)
-        for fila in range(9):
-            if random.random() < 0.5:
-                hijo[fila] = padre2[fila]
+        hijo = padre1.copy()
+
+        for fb in range(0, 9, 3):
+            for cb in range(0, 9, 3):
+
+                if random.random() < 0.5:
+                    bloque2 = padre2[fb:fb+3, cb:cb+3]
+                    bloque_fijo = self.modelo.mascara_fijas[fb:fb+3, cb:cb+3]
+
+                    for i in range(3):
+                        for j in range(3):
+                            if not bloque_fijo[i, j]:
+                                hijo[fb+i, cb+j] = bloque2[i, j]
+
         return hijo
 
-    #Mutacion del individuo
+    # ---------------------------------------------------------
+    # MUTACIÓN por BLOQUES (swap dentro del subcuadro)
+    # ---------------------------------------------------------
     def mutacion(self, individuo):
-        ind = np.copy(individuo)
-        #Recorremos los bloques 3x3
-        for fila_bloque in range(0, 9, 3):
-            for col_bloque in range(0, 9, 3):
+        hijo = individuo.copy()
+
+        for fb in range(0, 9, 3):
+            for cb in range(0, 9, 3):
+
                 if random.random() < self.tasa_mutacion:
-                    posiciones_editables = []
 
-                    #Recorremos cada celda del subcuadro
-                    for f in range(fila_bloque, fila_bloque + 3):
-                        for c in range(col_bloque, col_bloque + 3):
-                            if not self.modelo.mascara_fijas[f, c]:
-                                posiciones_editables.append((f, c))
-                            
-                    #Intercambiamos 2 celdas aleatorias
-                    if len(posiciones_editables) >= 2:
-                        a, b = random.sample(posiciones_editables, 2)
-                        ind[a], ind[b] = ind[b], ind[a]
+                    libres = []
+                    for i in range(3):
+                        for j in range(3):
+                            if not self.modelo.mascara_fijas[fb+i, cb+j]:
+                                libres.append((fb+i, cb+j))
 
-        return ind
+                    if len(libres) >= 2:
+                        a, b = random.sample(libres, 2)
+                        hijo[a], hijo[b] = hijo[b], hijo[a]
 
-    #Ejecutamos el algoritmo genetico
+        return hijo
+
+    # ---------------------------------------------------------
+    # EJECUTAR GA
+    # ---------------------------------------------------------
     def ejecutar(self):
-        #Poblacion inicial
         poblacion = self.generar_poblacion()
         historial = []
 
         mejor_individuo = None
-        mejor_fitness = float("inf") #Fitness inicial 
+        mejor_fitness = float("inf")
 
-        #Iteramos por generaciones
         for gen in range(self.generaciones):
             fitness_vals = [evaluar_fitness(ind) for ind in poblacion]
             idx_mejor = int(np.argmin(fitness_vals))
-            mejor_actual = poblacion[idx_mejor]
-            mejor_val = fitness_vals[idx_mejor]
 
-            historial.append(mejor_val)
+            gen_mejor = poblacion[idx_mejor]
+            gen_fit = fitness_vals[idx_mejor]
+            historial.append(gen_fit)
 
-            print(f"Generación {gen} - Mejor fitness: {mejor_val}")
+            print(f"Gen {gen} - Fitness: {gen_fit}")
 
-            # Actualizamos el mejor individuo encontrado
-            if mejor_val < mejor_fitness:
-                mejor_fitness = mejor_val
-                mejor_individuo = mejor_actual.copy()
+            # Actualizar mejor global
+            if gen_fit < mejor_fitness:
+                mejor_fitness = gen_fit
+                mejor_individuo = gen_mejor.copy()
 
-            #Si encontramos una solucion perfecta
-            if mejor_val == 0:
-                print("¡Sudoku resuelto!")
+            if mejor_fitness == 0:
+                print("✔ GA resolvió el Sudoku!")
                 return mejor_individuo, historial
 
-            nueva_poblacion = []
+            # Nueva población
+            nueva_pob = []
 
-            #Aplicamos elitismo (conservamos el mejor individuo)
+            # ELITISMO
             if self.elitismo:
-                nueva_poblacion.append(mejor_actual)
+                nueva_pob.append(gen_mejor.copy())
 
-            #Generamos nueva poblacion
-            while len(nueva_poblacion) < self.tam_poblacion:
+            # Rellenar el resto
+            while len(nueva_pob) < self.tam_poblacion:
                 p1 = self.seleccion_torneo(poblacion)
                 p2 = self.seleccion_torneo(poblacion)
 
                 hijo = self.cruce(p1, p2)
                 hijo = self.mutacion(hijo)
-                nueva_poblacion.append(hijo)
+                nueva_pob.append(hijo)
 
-            poblacion = nueva_poblacion
+            poblacion = nueva_pob
 
-        #Si no encontramos solucion perfecta
-        print("No se encontró solución perfecta. Devolviendo mejor individuo encontrado.")
+        print("⚠ No se logró solución perfecta. Retornando mejor aproximación.")
         return mejor_individuo, historial
